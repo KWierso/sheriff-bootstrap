@@ -12,7 +12,8 @@ cd ~/mozilla
 if [ ! -d "unified" ]; then
   # This is more convoluted than it should be, but hg clone to the
   # shared mozilla folder keeps getting cut off prematurely during 
-  # my testing. Instead, I'll try cloning into an unshared part of 
+  # my testing (I guess because writing to the Windows host is so slow?).
+  # Instead, I'll try cloning into an unshared part of 
   # the VM's virtual drive and moving it to the shared folder
   # after it finishes the clone to see if that helps.
   
@@ -20,29 +21,56 @@ if [ ! -d "unified" ]; then
   # from the host side on their own before proceeding with the bootstrap.
   cd ~
   echo "CLONING M-C... THIS WILL TAKE A WHILE"
-  hg clone https://hg.mozilla.org/mozilla-central unified
-  hg mv unified mozilla/unified
+  # Enable the progress extension just for this so the m-c clone has an ETA
+  hg clone https://hg.mozilla.org/mozilla-central unified --config extensions.hgext.progress=
+  mv unified/ mozilla/
 else
-  echo "M-C ALREADY CLONED."
+  echo "M-C ALREADY CLONED AND IN PLACE."
 fi
 
-# This was only needed if I would use the mercurial bundles, as they
-# don't create a pre-filled hgrc in that case. Saving for later if
-# I go back to that strategy.
-
-#    cat <<EOM > ~/mozilla/unified/.hg/hgrc
-#[paths]
-#default = https://hg.mozilla.org/mozilla-central/
-#EOM
-
+# I can't figure out how to get a vagrant synced folder to act as the root of
+# the user's home directory, so I'll copy the hgrc file to the synced mozilla
+# folder so it doesn't have to be re-written every single time the vm is recreated
+if [ ! -f ~/.hgrc ]; then
+  echo "NO HGRC FILE FOUND IN VM..."
+  if [ -f ~/mozilla/.hgrc ]; then
+    echo "COPYING .hgrc FROM HOST'S MOZILLA FOLDER"
+    cp ~/mozilla/.hgrc ~/.hgrc
+  else
+    echo "CREATING IT NOW."
+    cat <<EOM > ~/.hgrc
+[diff]
+git = 1
+showfunc = 1
+unified = 8
+[extensions]
+progress =
+color =
+rebase =
+histedit =
+mq =
+reviewboard = /home/vagrant/.mozbuild/version-control-tools/hgext/reviewboard/client.py
+firefoxtree = /home/vagrant/.mozbuild/version-control-tools/hgext/firefoxtree
+[defaults]
+qnew = -U
+EOM
+  fi
+else
+  echo "HGRC EXISTS, DON'T NEED TO MAKE IT"
+fi
 
 # Set up mercurial
 cd ~/mozilla/unified
 ./mach mercurial-setup
+./mach mercurial-setup
 
-# Re-run it if needed? I think it'd be better to just make a global
-# .hgrc file as part of this bootstrap and then run this script as
-# a sanity check.
+cp ~/.hgrc ~/mozilla/.hgrc
 
-#./mach mercurial-setup
+echo "NOW THAT MERCURIAL IS CONFIGURED, SETTING UP THE UNIFIED REPOSITORY"
+echo "(THIS CAN TAKE A WHILE)"
+cd ~/mozilla/unified
+hg pull integration
+hg pull releases
+hg up central
 
+echo "ALL DONE! HAVE FUN SHERIFFING"

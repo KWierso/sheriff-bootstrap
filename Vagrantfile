@@ -46,15 +46,6 @@ Vagrant.configure(2) do |config|
 	  sudo make --quiet install
   GETHG
 
-  # Version-control-tools installs via mach mercurial-setup later, so isn't needed
-#  config.vm.provision "shell", inline: <<-GETVCT
-#    cd mozilla
-#    if [ ! -d "version-control-tools" ]; then
-#      echo "NEED TO CLONE VCT"
-#      hg clone https://hg.mozilla.org/hgcustom/version-control-tools
-#    fi
-#  GETVCT
-
   # This isn't needed anymore if the cloning happens with the bootstrap script.
   config.vm.provision "shell", inline: <<-GETUNIFIED
   #  cd mozilla
@@ -67,6 +58,10 @@ Vagrant.configure(2) do |config|
   #    hg init unified
   #  fi
     echo "Done with provisioning!"
-    echo "\n\n\n\nNext, run vagrant ssh, then run ./sheriff-bootstrap/bootstrap.sh once you're in the VM"
+    echo ""
+    echo ""
+    echo ""
+    echo "Next, run vagrant ssh"
+    echo "Then run ./sheriff-bootstrap/bootstrap.sh once you're in the VM to clone m-c and do a mercurial sanity check"
   GETUNIFIED
 end
